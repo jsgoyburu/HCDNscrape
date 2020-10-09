@@ -1,3 +1,4 @@
+
 import sys
 import os
 import pandas as pd
@@ -13,6 +14,7 @@ from seleniumrequests import Chrome
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
+
 #===CONFIGURACION DE DIRECTORIOS===
 cwd = os.getcwd()
 src = os.getcwd()+'\\sources\\'
@@ -30,6 +32,22 @@ chrome_options.add_argument('--ignore-certificate-errors')
 chrome_options.add_argument("--start-maximized")
 chrome_options.add_argument("--disable-extensions")
 
+#===EMPACA LOS JSON POR AÑO===
+def packJSON(directorio):
+    archivosJson = os.listdir(directorio)
+    anios = []
+    for jose in archivosJson:
+        anios.append((re.search('^\d+',(re.search('\d+.json$', jose)[0]))[0], jose))
+    anios = pd.DataFrame.from_records(anios, index=0)
+    anios.columns = pd.Index(['anio', 'archivo'])
+    porAnio = anios.groupby(by='anio')
+    for grupo in porAnio:
+        try: archivoZip = zipfile.ZipFile(res+grupo[0]+'.zip', mode='w')
+        except: archivoZip = zipfile.ZipFile(res+grupo[0]+'.zip', mode='a')
+        for index, anio, archivo in grupo[1].itertuples():
+            archivoZip.write(directorio+archivo, os.path.basename(tmp+archivo))
+        archivoZip.close()
+
 def escape(cadena):
     escaped = cadena.translate(str.maketrans({"-":  r"\-",
                                           "]":  r"\]",
@@ -39,6 +57,7 @@ def escape(cadena):
                                           "*":  r"\*",
                                           ".":  r"\."}))
     return escaped
+
 def limpiarEscapes(cadena):
     cadena2 = ''
     for e in cadena:
@@ -285,6 +304,7 @@ try:
     logErrores = open(res+'logErrores.txt', 'wt')
     logErrores.write(strErrores)
     logErrores.close()
+
 except Exception as e:
     print(e)
     pass
@@ -298,6 +318,7 @@ for llave, elemento in htmlProyectos:
     proyecto = elemento[-1]
     soup = BeautifulSoup(proyecto, 'html.parser')
     indice = llave
+    
     # Chequeamos si el proyecto existe en la carpeta temporal. Si existe,
     # lo agregamos y pasamos al próximo.
     if os.path.isfile(tmp+indice+'.json'):
@@ -307,9 +328,11 @@ for llave, elemento in htmlProyectos:
                 table.append(row)
                 continue
         except: pass
+    
     # 'row' va a ser la fila que contiene al proyecto. Comienza su vida
     # como una serie cuyo nombre es el expediente.
     row = pd.Series(name=indice, dtype=np.float64)
+    
     # Lleno los primeros datos, que están en el div 'dp-metadata'
     row['Tipo de Proyecto'] = soup.find_all('h4')[0].string
     datosProy = soup.find(class_='dp-metadata').find_all('span')
@@ -366,6 +389,7 @@ final = pd.DataFrame() # Esta va a ser la tabla final
 # POR CADA FILA EN 'table', LA CONCATENAMOS A LA TABLA FINAL
 for elemento in table:
     final = pd.concat([final,elemento])
+
 del table #Borramos el array de filas
 #Pasa 'Palabras Claves' al principio
 cols = list(final)

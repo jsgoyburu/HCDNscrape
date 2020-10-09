@@ -44,6 +44,21 @@ chrome_options.add_argument('--ignore-certificate-errors')
 chrome_options.add_argument("--start-maximized")
 chrome_options.add_argument("--disable-extensions")
 
+def packJSON(directorio):
+    archivosJson = os.listdir(directorio)
+    anios = []
+    for jose in archivosJson:
+        anios.append((re.search('^\d+',(re.search('\d+.json$', jose)[0]))[0], jose))
+    anios = pd.DataFrame.from_records(anios, index=0)
+    anios.columns = pd.Index(['anio', 'archivo'])
+    porAnio = anios.groupby(by='anio')
+    for grupo in porAnio:
+        try: archivoZip = zipfile.ZipFile(res+grupo[0]+'.zip', mode='w')
+        except: archivoZip = zipfile.ZipFile(res+grupo[0]+'.zip', mode='a')
+        for index, anio, archivo in grupo[1].itertuples():
+            archivoZip.write(directorio+archivo, os.path.basename(tmp+archivo))
+        archivoZip.close()
+
 def escape(cadena):
     escaped = cadena.translate(str.maketrans({"-":  r"\-",
                                           "]":  r"\]",
